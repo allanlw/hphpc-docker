@@ -1,0 +1,3 @@
+[submodule "source/hhvm"]
+	path = source/hhvm
+	url = git://github.com/facebook/hhvm.git
