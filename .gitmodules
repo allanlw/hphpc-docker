@@ -1,3 +1,12 @@
 [submodule "source/hhvm"]
 	path = source/hhvm
 	url = git://github.com/facebook/hhvm.git
+[submodule "source/curl"]
+	path = source/curl
+	url = ./source/curl
+[submodule "source/glog"]
+	path = source/glog
+	url = ./source/glog
+[submodule "source/libevent"]
+	path = source/libevent
+	url = ./source/libevent
