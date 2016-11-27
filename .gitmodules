@@ -3,10 +3,10 @@
 	url = git://github.com/facebook/hhvm.git
 [submodule "source/curl"]
 	path = source/curl
-	url = ./source/curl
+	url = git@github.com:curl/curl.git
 [submodule "source/glog"]
 	path = source/glog
-	url = ./source/glog
+	url = git@github.com:google/glog.git
 [submodule "source/libevent"]
 	path = source/libevent
-	url = ./source/libevent
+	url = git://github.com/libevent/libevent.git
