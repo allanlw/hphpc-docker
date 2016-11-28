@@ -1,5 +1,8 @@
 FROM ubuntu:12.04
 
+# The commands in this file are sourced from
+# https://github.com/facebook/hhvm/wiki/Building-and-installing-HHVM-on-Ubuntu-12.04/2c4d922e8284805d05cc3917a0de2ffe22f69cfd
+
 RUN apt-get update && apt-get install -y git-core cmake g++ libboost-dev libmysqlclient-dev \
   libxml2-dev libmcrypt-dev libicu-dev openssl build-essential binutils-dev \
   libcap-dev libgd2-xpm-dev zlib1g-dev libtbb-dev libonig-dev libpcre3-dev \
