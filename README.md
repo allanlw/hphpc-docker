@@ -33,3 +33,17 @@ hphp is now build and located in /hphpc/hhvm/bin/hphp in the container.
 
 Tests can be run from /hphpc/hhvm/hphp as `./test/test`. Note that TestExtMcrypt
 blocks on reading /dev/random.
+
+# Run
+
+Inside the container, an example invocation might be:
+
+     /hphpc/hhvm/hphp/hphp/hphp -l 4 -k 1 -o out input.php
+
+This has maximum verbose output (`-l 4`), uses `out` as the output directory (`-o 
+out`), saves the output instead of just running it and them deleting the dir (`-k 1`), 
+and uses input file input.php. Inside the `out` directory, there will be a file 
+`program` which is the compiled program. The directory also has many useful 
+intermediate files.
+
+Note that compilation, even for simple programs, can take a few minutes. Be patient.
