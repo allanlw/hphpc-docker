@@ -9,12 +9,14 @@ RUN apt-get update && apt-get install -y git-core cmake g++ libboost-dev libmysq
   libc-client2007e-dev php5-mcrypt php5-imagick libgoogle-perftools-dev \
   libcloog-ppl0 libelf-dev libdwarf-dev libunwind7-dev subversion
 
-ADD source /hphpc
-
+RUN mkdir /hphpc
 WORKDIR /hphpc
 
-ENV CMAKE_PREFIX_PATH=/hphpc HPHP_HOME=/hphpc/hhvm HPHP_LIB=/hphpc/hhvm/bin USE_HHVM=1
+ENV CMAKE_PREFIX_PATH=/hphpc
 
+ADD source/hhvm /hphpc/hhvm
+
+ADD source/libevent /hphpc/libevent
 RUN cd libevent && \
     patch -p1 < /hphpc/hhvm/hphp/third_party/libevent-1.4.14.fb-changes.diff && \
     ./autogen.sh && \
@@ -22,19 +24,23 @@ RUN cd libevent && \
     make && \
     make install
 
+ADD source/curl /hphpc/curl
 RUN cd curl && \
     ./buildconf && \
     ./configure -prefix=$CMAKE_PREFIX_PATH && \
     make && \
     make install
 
+ADD source/glog /hphpc/glog
 RUN cd glog && \
     ./configure --prefix=$CMAKE_PREFIX_PATH && \
     make && \
     make install
 
+ENV HPHP_HOME=/hphpc/hhvm HPHP_LIB=/hphpc/hhvm/bin USE_HPHPC=1
+
 RUN cd hhvm && \
     cmake . && \
-    make
+    make -j 2
 
-
+#RUN cd /hphpc/hhvm/hphp/ && ./test/test
