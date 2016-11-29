@@ -31,7 +31,7 @@ git submodules). Upgrading all of them to modern versions would be quite the end
 
 To build this repo:
 
-    git submodule init && git submodule update --depth=1 --recursive
+    git submodule init && git submodule update --recursive
     docker build -t hphpc .
 
 hphp is now build and located in /hphpc/hhvm/bin/hphp in the container.
