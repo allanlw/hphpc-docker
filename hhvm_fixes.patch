@@ -1,0 +1,39 @@
+commit c5425874855171035e0a8543e6b79198621c4a27
+Author: Allan Wirth <allan@allanwirth.com>
+Date:   Sat Dec 3 07:11:37 2016 -0500
+
+    Fix make env and php path
+
+diff --git a/hphp/legacy/run.sh b/hphp/legacy/run.sh
+index bede609..cc75d66 100755
+--- a/hphp/legacy/run.sh
++++ b/hphp/legacy/run.sh
+@@ -5,6 +5,15 @@
+    #echo make -j $3 PROJECT_NAME=$2 TIME_LINK=1 -C $1
+ cp $HPHP_HOME/hphp/legacy/CMakeLists.base.txt $1/CMakeLists.txt
+ cd $1
++
++# If hphc was called from a makefile, don't propogate
++# environment nonsense to the child, because this breaks tests
++# I wish there was an exhaustive list of these somewhere
++unset MAKEFLAGS
++unset MAKEOVERRIDES
++unset MFLAGS
++unset MAKELEVEL
++
+ cmake -D PROGRAM_NAME:string=$2 . || exit $?
+ 
+ if [ -n "$HPHP_VERBOSE" ]; then
+diff --git a/hphp/runtime/tmp/test.mk b/hphp/runtime/tmp/test.mk
+index 1ad42c8..3e903e6 100644
+--- a/hphp/runtime/tmp/test.mk
++++ b/hphp/runtime/tmp/test.mk
+@@ -19,7 +19,7 @@ TARGET = hphp
+ EXTRA_RUNTIME_OPTIONS:=-vEval.Jit=$(if $(filter TestCodeRunRepoJit,$(SUITE)),1,0)
+ endif
+ 
+-ZEND = /home/engshare/externals/cpp/hphp/centos-dev/php/bin/php
++ZEND = php
+ ZEND_WARN = -ddisplay_errors=stderr -dapc.enable_cli=1
+ ZEND_NOWARN = -ddisplay_errors=off -dapc.enable_cli=1
+ 

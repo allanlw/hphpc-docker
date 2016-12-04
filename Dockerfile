@@ -10,14 +10,14 @@ RUN apt-get update && apt-get install -y git-core cmake g++ libboost-dev libmysq
   libboost-program-options-dev libboost-filesystem-dev wget memcached \
   libreadline-dev libncurses-dev libmemcached-dev libbz2-dev \
   libc-client2007e-dev php5-mcrypt php5-imagick libgoogle-perftools-dev \
-  libcloog-ppl0 libelf-dev libdwarf-dev libunwind7-dev subversion
+  libcloog-ppl0 libelf-dev libdwarf-dev libunwind7-dev subversion php5-cli
 
 RUN mkdir /hphpc
 WORKDIR /hphpc
 
 ENV CMAKE_PREFIX_PATH=/hphpc
 
-ADD source/hhvm /hphpc/hhvm
+ADD source/hhvm/hphp/third_party/libevent-1.4.14.fb-changes.diff /hphpc/hhvm/hphp/third_party/libevent-1.4.14.fb-changes.diff
 
 ADD source/libevent /hphpc/libevent
 RUN cd libevent && \
@@ -40,10 +40,31 @@ RUN cd glog && \
     make && \
     make install
 
+ADD source/hhvm /hphpc/hhvm
+ADD hhvm_fixes.patch /hphpc/hhvm_fixes.patch
+
+WORKDIR /hphpc/hhvm
 ENV HPHP_HOME=/hphpc/hhvm HPHP_LIB=/hphpc/hhvm/bin USE_HPHPC=1
 
-RUN cd hhvm && \
-    cmake . && \
-    make -j 2
+# See patch file for details about what is changed.
+RUN patch -p1 < /hphpc/hhvm_fixes.patch
 
-#RUN cd /hphpc/hhvm/hphp/ && ./test/test
+# Fix some paths to get the tests to run properly
+# Fix up old path via symlink of src -> hphp
+# Reconfigure ubuntu to use /bin/bash for /bin/sh
+# Fix path to FB php bin to local php binary
+RUN ln -s hphp src && \
+    echo "no" | dpkg-reconfigure dash
+
+# Just generate the files that break the parallel build manually
+# Then build in parallel
+RUN cmake . && \
+    /hphpc/hhvm/hphp/tools/generate_compiler_id.sh && \
+    /hphpc/hhvm/hphp/tools/generate_repo_schema.sh && \
+    make -j$(nproc)
+
+# Run our simple sanity tests, should take less than 1 min
+ADD test /hphpc/test
+RUN /hphpc/test/test.sh
+
+CMD bash
