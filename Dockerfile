@@ -58,7 +58,9 @@ RUN ln -s hphp src && \
 
 # Just generate the files that break the parallel build manually
 # Then build in parallel
-RUN cmake . && \
+# use CMAKE_BUILD_TYPE=RelWithDebInfo so we have symbols
+# Which shouldn't really slow down anything
+RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo . && \
     /hphpc/hhvm/hphp/tools/generate_compiler_id.sh && \
     /hphpc/hhvm/hphp/tools/generate_repo_schema.sh && \
     make -j$(nproc)
