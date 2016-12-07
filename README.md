@@ -58,6 +58,20 @@ A full example run inside docker might look like:
     docker run -v /home/allan/hphpc-docker-full/test:/test \
         -it hphpc /hphpc/hhvm/hphp/hphp/hphp -l 4 -k 1 -o /test/out /test/test.php
 
+To test, you can run, from /hphpc/hhvm/hphp:
+
+    time HPHP_VERBOSE=1 ./test/test TestCodeRun
+
+Running this on a 4 core Digital Ocean box resulted in:
+
+    ERROR: 79/2192 unit tests failed.
+
+    real    945m58.334s
+    user    3262m55.673s
+    sys     466m0.929s
+
+With more cores, this would likely go faster.
+
 ## License
 
 Anything in this repo is licensed CC BY-SA 3.0, as it is a simple derivative of 
