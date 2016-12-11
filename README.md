@@ -65,7 +65,10 @@ Running this on a 4 core Digital Ocean box resulted in:
 With more cores, this would likely go faster. I was not able to debug the reason that 
 some tests failed.
 
-## Gotchas
+## Details
+
+There has been quite a lot of bit rot that needs to be worked around. Debugging/fixing 
+it has been a bit gory, so details follow to save future generations the trouble.
 
 The last commit to use HPHPc is available at 
 [facebook/hhvm@b74a0da](https://github.com/facebook/hhvm/commit/b74a0da0623d72ac0d5dfc097ae307653b0e7f35) 
@@ -76,13 +79,14 @@ versions (hhvm), but build instructions for Ubuntu 12.04 (LTS) are available [in
 older 
 revision](https://github.com/facebook/hhvm/wiki/Building-and-installing-HHVM-on-Ubuntu-12.04/2c4d922e8284805d05cc3917a0de2ffe22f69cfd).
 
-A small patch is applied to hhv, which fixes a few issues. First, it prevents makeflags 
-being propagated into HPHPc's internal invocation of make through environment 
+A small patch is applied to hhvm, which fixes a few issues. First, it prevents 
+makeflags being propagated into HPHPc's internal invocation of make through environment 
 variables, which was causing make to output a warning on stderr, breaking the test 
 suite. Second, It applies a fix for bug 
 [facebook/hhvm#570](https://github.com/facebook/hhvm/issues/570) which is an issue 
-related to static initializer ordering. Third, it replaces a facebook-internal path to 
-the php binary for testing with the system php.
+related to static initializer ordering that would sometimes cause floating point 
+exceptions in built targets. Third, it replaces a facebook-internal path to the php 
+reference binary for testing with the system php.
 
 In addition to the patch, the Dockerfile also configures the system to use bash as the 
 system shell (not doing this breaks some scripts), and adds a symlink from 
@@ -96,8 +100,9 @@ before kicking off `make`, and when running the tests /dev/random is symlinked t
 /dev/urandom to avoid blocking in the MCrypt test (note this does not persist across 
 docker layers).
 
-HPHPc further includes a bunch of third party libraries inline directly. Upgrading all 
-of them to modern versions would be quite the endeavor. Right now the container use 
+Specific commits for contemporary versions of dependencies are used in the submodules, 
+and HPHPc further includes a bunch of third party libraries inline directly. Upgrading 
+all of them to modern versions would be quite the endeavor. Right now the container use 
 Ubuntu 12.04 - I've tried some to port it to 14.04, but ran into some arcane issues 
 that I wasn't able to debug well. I would be happy to accepting pull requests for 
 upgrading OS or library versions, switching away from bundled libraries, improving test 
