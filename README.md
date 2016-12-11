@@ -1,16 +1,11 @@
 # HPHPc Docker
 
-This repo contains everything required to build a functioning docker image with HPHPc 
-(HipHop-PHP-Compiler) circa early February 2013.
-
-## About
-
-HPHPc is a PHP to C++ compiler that was developed originally developed at Facebook. It 
-has largely been replaced by HHVM which uses a JIT based architecture instead. This 
-repo contains a Dockerfile, and a git config for submodules to create a container to 
-run legacy hphpc in, as one might expect to find it in early 2013. Compiling on a modern 
-system, while theoretically possible, is likely to result in dependency hell, so using 
-this Dockerfile can be convenient for experimentation.
+HPHPc is a PHP to C++ compiler that was originally developed at Facebook and later 
+abandoned in favor of HHVM's JIT-based architecture. This repo contains a Dockerfile, 
+git submodules for the right dependencies, and some small patches to build a container 
+with a working HPHPc in it, as one might expect to find it in early 2013. Compiling on 
+a modern system, while theoretically possible, is likely to result in dependency hell, 
+so using this Dockerfile can be convenient for experimentation.
 
 To get started quickly, an example program and invocation are provided:
 
