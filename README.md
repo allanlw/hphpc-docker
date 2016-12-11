@@ -72,8 +72,7 @@ facebook/hhvm@b74a0da0623d72ac0d5dfc097ae307653b0e7f35 from Feb 11 2013, however
 documented in facebook/hhvm#700 - so we use a commit from a few days earlier. 
 Instructions for how to build on the hphp wiki are for current versions (hhvm), but 
 build instructions for Ubuntu 12.04 (LTS) are available at 
-[https://github.com/facebook/hhvm/wiki/Building-and-installing-HHVM-on-Ubuntu-12.04/2c4d922e8284805d05cc3917a0de2ffe22f69cfd](in 
-an older revision).
+[in an older revision](https://github.com/facebook/hhvm/wiki/Building-and-installing-HHVM-on-Ubuntu-12.04/2c4d922e8284805d05cc3917a0de2ffe22f69cfd).
 
 A small patch (located in hhvm_fixes.patch) is applied to hhvm. This fixes a few 
 issues. First, it prevents makeflags being propagated into HPHPc's internal invocation 
