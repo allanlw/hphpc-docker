@@ -20,6 +20,8 @@ To build this repo:
 
 hphp is now built and located in /hphpc/hhvm/hphp/hphp/hphp in the container.
 
+For convenience, I've also published to the docker hub: https://hub.docker.com/r/awirth/hphpc/
+
 ## Run
 
 Inside the container, an example invocation might be:
