@@ -5,27 +5,16 @@ This repo contains everything required to build a functioning docker image with 
 
 ## About
 
-HPHPC is a PHP to C compiler that was developed originally developed at Facebook. It 
-has largely been replaced by HHVM which uses a JIT based architecture instead. These 
-are some notes for how to build/install the legacy HPHPC, which will let you compile 
-PHP code into C code.
+HPHPC is a PHP to C++ compiler that was developed originally developed at Facebook. It 
+has largely been replaced by HHVM which uses a JIT based architecture instead. This 
+repo contains a Dockerfile, and a git config for submodules to create a container to 
+run legacy hphpc in, as one might exect to find it in early 2013. Compiling on a modern 
+system, while theoretically possible, is likely to result in dependency hell, so using 
+this Dockerfile can be convenient for experimentation.
 
-The last commit to use HPHPC is available at 
-https://github.com/facebook/hhvm/tree/use-hphpc commit 
-b74a0da0623d72ac0d5dfc097ae307653b0e7f35 from Feb 11 2013, however this has a bug 
-documented in https://github.com/facebook/hhvm/issues/700 - so we use a commit from a 
-few days earlier. Instructions for how to build on the hphp wiki are for current 
-versions (hhvm), but build instructions for Ubuntu 12.04 (LTS) are available at: 
-https://github.com/facebook/hhvm/wiki/Building-and-installing-HHVM-on-Ubuntu-12.04/2c4d922e8284805d05cc3917a0de2ffe22f69cfd 
-(note the old revision).
+To get started quickly, an example program and invocation are provided:
 
-This repo contains a Dockerfile, and a git config for submodules to create a container 
-to run legacy hphpc in, as one might exect to find it in early 2013. Compiling on a 
-modern system, while theoretically possible, is likely to result in dependency hell, so 
-using this Dockerfile can be convenient for experimentation.
-
-Note that HPHPC further includes a bunch of third party libraries inline directly (as 
-git submodules). Upgrading all of them to modern versions would be quite the endevour.
+    docker run --rm -it awirth/hphpc:latest /hphpc/test/quick_start.sh
 
 ## Build
 
@@ -34,10 +23,7 @@ To build this repo:
     git submodule init && git submodule update --recursive
     docker build -t hphpc .
 
-hphp is now build and located in /hphpc/hhvm/bin/hphp in the container.
-
-Tests can be run from /hphpc/hhvm/hphp as `./test/test`. Note that TestExtMcrypt
-blocks on reading /dev/random.
+hphp is now built and located in /hphpc/hhvm/hphp/hphp/hphp in the container.
 
 ## Run
 
@@ -55,10 +41,16 @@ Note that compilation, even for simple programs, can take a few minutes. Be pati
 
 A full example run inside docker might look like:
 
-    docker run -v /home/allan/hphpc-docker-full/test:/test \
-        -it hphpc /hphpc/hhvm/hphp/hphp/hphp -l 4 -k 1 -o /test/out /test/test.php
+    docker run -v /home/allan/src/:/src -it awirth/hphpc:latest \
+        /hphpc/hhvm/hphp/hphp/hphp -l 4 -k 1 -o /src/project/out /src/project/myprogram.php
 
-To test, you can run, from /hphpc/hhvm/hphp:
+### Test
+
+Tests can be run from /hphpc/hhvm/hphp as `./test/test`. A handful of fast-ish tests 
+are run while building the container by /hphpc/test/test.sh, which also contains some 
+useful information about the arguments to pass to the test binary.
+
+A full "TestcodeRun" test can take quite a long time. I've run it only once.
 
     time HPHP_VERBOSE=1 ./test/test TestCodeRun
 
@@ -70,12 +62,51 @@ Running this on a 4 core Digital Ocean box resulted in:
     user    3262m55.673s
     sys     466m0.929s
 
-With more cores, this would likely go faster.
+With more cores, this would likely go faster. I was not able to debug the reason that 
+some tests failed.
+
+## Gotchas
+
+The last commit to use HPHPC is available at 
+https://github.com/facebook/hhvm/tree/use-hphpc commit 
+b74a0da0623d72ac0d5dfc097ae307653b0e7f35 from Feb 11 2013, however this has a bug 
+documented in https://github.com/facebook/hhvm/issues/700 - so we use a commit from a 
+few days earlier. Instructions for how to build on the hphp wiki are for current 
+versions (hhvm), but build instructions for Ubuntu 12.04 (LTS) are available at: 
+https://github.com/facebook/hhvm/wiki/Building-and-installing-HHVM-on-Ubuntu-12.04/2c4d922e8284805d05cc3917a0de2ffe22f69cfd 
+(note the old revision).
+
+A small patch (located in hhvm_fixes.patch) is applied to hhvm. This fixes a few 
+issues. First, it prevents makeflags being propogated into HPHPc's internal invocation 
+of make through environment variables, which was causing make to output a warning on 
+stderr, breaking the test suite. Second, It applies a fix for bug 
+https://github.com/facebook/hhvm/issues/570 which is an issue related to static 
+initializer ordering. Third, it replaces a facebook-internal path to the php binary for 
+testing with the system php.
+
+In addition to the patch, the dockerfile also configures the system to use bash as the 
+system shell (not doing this breaks some scripts), and adds a symlink from 
+/hphpc/hhvm/src to /hphpc/hhvm/hphp to work around some dangling references to the old 
+name of this directory left over from this change: 
+https://github.com/facebook/hhvm/commit/363d1bb20fe84b4cdc2dc0f4c7b1dd39d167a1f5
+
+Finally, a few changes are made as small optimizations. Two scripts that are not happy 
+being called outside of a git repository and break parallel builds are called manually 
+before kicking off `make`, and when running the tests /dev/random is symlinked to 
+/dev/urandom to avoid blocking in the MCrypt test (note this does not persist across 
+docker layers).
+
+HPHPC further includes a bunch of third party libraries inline directly. Upgrading all 
+of them to modern versions would be quite the endevour. Right now the container use 
+Ubuntu 12.04 - I've tried some to port it to 14.04, but ran into some archane issues 
+that I wasn't able to debug well. I would be happy to accepting pull requests for 
+upgrading OS or library versions, switching away from bundled libraries, or improving 
+test coverage.
 
 ## License
 
-Anything in this repo is licensed CC BY-SA 3.0, as it is a simple derivative of 
+The Dockerfile is licensed CC BY-SA 3.0, as it is a simple derivative of 
 https://github.com/facebook/hhvm/wiki/Building-and-installing-HHVM-on-Ubuntu-12.04/2c4d922e8284805d05cc3917a0de2ffe22f69cfd 
-which is CC BY-SA 3.0 as documented at https://github.com/facebook/hhvm/wiki/License - 
-this includes the Dockerfile and any test php scripts, but does NOT include any of the 
-submodules, which are distributed separately.
+which is CC BY-SA 3.0 as documented at https://github.com/facebook/hhvm/wiki/License
+
+Everything else is a derivative of HHVM, so it is under the same licenses (PHP and Zend).

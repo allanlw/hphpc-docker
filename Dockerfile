@@ -49,10 +49,8 @@ ENV HPHP_HOME=/hphpc/hhvm HPHP_LIB=/hphpc/hhvm/bin USE_HPHPC=1
 # See patch file for details about what is changed.
 RUN patch -p1 < /hphpc/hhvm_fixes.patch
 
-# Fix some paths to get the tests to run properly
 # Fix up old path via symlink of src -> hphp
 # Reconfigure ubuntu to use /bin/bash for /bin/sh
-# Fix path to FB php bin to local php binary
 RUN ln -s hphp src && \
     echo "no" | dpkg-reconfigure dash
 
