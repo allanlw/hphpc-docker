@@ -1,16 +1,18 @@
-FROM ubuntu:12.04
+FROM ubuntu:12.10
 
 # The commands in this file are sourced from
 # https://github.com/facebook/hhvm/wiki/Building-and-installing-HHVM-on-Ubuntu-12.04/2c4d922e8284805d05cc3917a0de2ffe22f69cfd
 
-RUN apt-get update && apt-get install -y git-core cmake g++ libboost-dev libmysqlclient-dev \
+RUN ( apt-get update || ( sed -i -e 's/archive.ubuntu.com/old-releases.ubuntu.com/' /etc/apt/sources.list; apt-get update ) ) && \
+  apt-get install -y git-core cmake g++ libboost-dev libmysqlclient-dev \
   libxml2-dev libmcrypt-dev libicu-dev openssl build-essential binutils-dev \
   libcap-dev libgd2-xpm-dev zlib1g-dev libtbb-dev libonig-dev libpcre3-dev \
   autoconf libtool libcurl4-openssl-dev libboost-system-dev \
   libboost-program-options-dev libboost-filesystem-dev wget memcached \
   libreadline-dev libncurses-dev libmemcached-dev libbz2-dev \
   libc-client2007e-dev php5-mcrypt php5-imagick libgoogle-perftools-dev \
-  libcloog-ppl0 libelf-dev libdwarf-dev libunwind7-dev subversion php5-cli
+  libcloog-ppl0 libelf-dev libdwarf-dev libunwind8-dev subversion php5-cli \
+  python
 
 RUN mkdir /hphpc
 WORKDIR /hphpc
@@ -58,7 +60,7 @@ RUN ln -s hphp src && \
 # Then build in parallel
 # use CMAKE_BUILD_TYPE=RelWithDebInfo so we have symbols
 # Which shouldn't really slow down anything
-RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo . && \
+RUN CXXFLAGS="-ftemplate-depth=900" cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo . && \
     /hphpc/hhvm/hphp/tools/generate_compiler_id.sh && \
     /hphpc/hhvm/hphp/tools/generate_repo_schema.sh && \
     make -j$(nproc)
