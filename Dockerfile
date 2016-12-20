@@ -60,7 +60,7 @@ RUN ln -s hphp src && \
 # Then build in parallel
 # use CMAKE_BUILD_TYPE=RelWithDebInfo so we have symbols
 # Which shouldn't really slow down anything
-RUN CXXFLAGS="-ftemplate-depth=900" cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo . && \
+RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo . && \
     /hphpc/hhvm/hphp/tools/generate_compiler_id.sh && \
     /hphpc/hhvm/hphp/tools/generate_repo_schema.sh && \
     make -j$(nproc)

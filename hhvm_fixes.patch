@@ -1,3 +1,16 @@
+diff --git a/CMake/HPHPSetup.cmake b/CMake/HPHPSetup.cmake
+index 351db73..d73bf11 100644
+--- a/CMake/HPHPSetup.cmake
++++ b/CMake/HPHPSetup.cmake
+@@ -115,7 +115,7 @@ IF($ENV{CXX} MATCHES "icpc")
+ 	set(CMAKE_CXX_FLAGS "-no-ipo -fp-model precise -wd584 -wd1418 -wd1918 -wd383 -wd869 -wd981 -wd424 -wd1419 -wd444 -wd271 -wd2259 -wd1572 -wd1599 -wd82 -wd177 -wd593 -fno-omit-frame-pointer -ftemplate-depth-60 -Wall -Woverloaded-virtual -Wno-deprecated -w1 -Wno-strict-aliasing -Wno-write-strings -Wno-invalid-offsetof -fno-operator-names")
+ else()
+ 	set(CMAKE_C_FLAGS "-w")
+-	set(CMAKE_CXX_FLAGS "-fno-gcse -fno-omit-frame-pointer -ftemplate-depth-60 -Wall -Woverloaded-virtual -Wno-deprecated -Wno-strict-aliasing -Wno-write-strings -Wno-invalid-offsetof -fno-operator-names -Wno-error=array-bounds -Wno-error=switch -std=gnu++0x -Werror=format-security -Wno-unused-result -Wno-sign-compare")
++	set(CMAKE_CXX_FLAGS "-fno-gcse -fno-omit-frame-pointer -ftemplate-depth-128 -Wall -Woverloaded-virtual -Wno-deprecated -Wno-strict-aliasing -Wno-write-strings -Wno-invalid-offsetof -fno-operator-names -Wno-error=array-bounds -Wno-error=switch -std=gnu++0x -Werror=format-security -Wno-unused-result -Wno-sign-compare")
+ endif()
+ 
+ IF(CMAKE_COMPILER_IS_GNUCC)
 diff --git a/hphp/legacy/run.sh b/hphp/legacy/run.sh
 index bede609..cc75d66 100755
 --- a/hphp/legacy/run.sh
@@ -18,6 +31,19 @@ index bede609..cc75d66 100755
  cmake -D PROGRAM_NAME:string=$2 . || exit $?
  
  if [ -n "$HPHP_VERBOSE" ]; then
+diff --git a/hphp/rules.mk b/hphp/rules.mk
+index e6f53e1..6375aa0 100644
+--- a/hphp/rules.mk
++++ b/hphp/rules.mk
+@@ -254,7 +254,7 @@ GOOGLE_TOOLS = 1
+ endif
+ 
+ CPPFLAGS += -D_GNU_SOURCE -D_REENTRANT=1 -D_PTHREADS=1 -pthread
+-CXXFLAGS += -ftemplate-depth-60
++CXXFLAGS += -ftemplate-depth-128
+ 
+ endif
+ 
 diff --git a/hphp/runtime/base/type_string.cpp b/hphp/runtime/base/type_string.cpp
 index 0290872..fc25f4f 100644
 --- a/hphp/runtime/base/type_string.cpp
