@@ -69,7 +69,7 @@ RUN \
 # The getgroups test expects us to be in more than one group
     adduser root mail && \
 # Some tests expect to be able to setlocale()
-    locale-gen --purge en_US.UTF-8 && \
+    locale-gen --purge en_US.UTF-8 de_DE.UTF-8 && \
     echo -e 'LANG="en_US.UTF-8"\nLANGUAGE="en_US:en"\n' > /etc/default/locale && \
 # Some tests in ExtDatetime expect us to be in America/Los_Angeles
     echo "America/Los_Angeles" > /etc/timezone && \

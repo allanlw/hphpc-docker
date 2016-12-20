@@ -4,11 +4,25 @@ cd /hphpc/hhvm/hphp
 
 ## Test Environment Initialization
 
+# Make some changes to /etc/hosts to placate tests.
+# This DOES NOT persist across layers: https://github.com/docker/docker/issues/10324
+cp /etc/hosts /tmp/etc-host
+
 # Example.com doesn't serve up a Connection header anymore,
 # which TestExtUrl expects. What. The. Hell.
 # Note you need to find a host that ignores Host headers
-# This DOES NOT persist across layers: https://github.com/docker/docker/issues/10324
-echo "$(python -c 'import socket; print socket.gethostbyname("www.iana.org")') example.com www.example.com" >> /etc/hosts
+echo "$(python -c 'import socket; print socket.gethostbyname("www.iana.org")') example.com www.example.com" >> /tmp/etc-host
+
+# The test for gethostbynamel in TestExtNetwork expects only one result
+# for gethostbyname("localhost"). Placate it.
+sed -i -e 's/^.*ip6-localhost.*$/#/' /tmp/etc-host
+
+# The test for gethostbyaddr in TestExtNetwork expects a result of
+# gethostbyaddr("127.0.0.1") == "localhost.localdomain"
+sed -i -e 's/^127.0.0.1/127.0.0.1 localhost.localdomain/' /tmp/etc-host
+
+# Can't move because of bind mounts
+cat /tmp/etc-host > /etc/hosts
 
 # Link /dev/random to /dev/urandom for MCrypt testing
 # Note: The /dev/ editing does not persist across layers for docker
