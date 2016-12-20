@@ -29,6 +29,9 @@ cat /tmp/etc-host > /etc/hosts
 rm -rf /dev/random
 ln -s /dev/urandom /dev/random
 
+# Start memcached for the duration of the tests
+service memcached start
+
 ## Run Tests
 
 # see hphp/test/test.cpp and hphp/test/test_all.cpp
@@ -54,7 +57,7 @@ echo "Running TestExt..."
 cat /hphpc/hhvm/hphp/test/test_ext.inc | \
     grep RUN_TESTSUITE | \
     sed -E s'/RUN_TESTSUITE\((.*)\);$/\1/' | \
-    grep -Ev "TestExtMysql|TestExtPdo|TestExtMemcached" | \
+    grep -Ev "TestExtMysql|TestExtPdo" | \
     xargs -I{} sh -c "echo {}; ./test/test '{}' '' '' quiet || true"
 
 # TestCodeRun::TestSanity - Verifies that we can compile code.
