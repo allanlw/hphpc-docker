@@ -1,5 +1,5 @@
 diff --git a/CMake/HPHPSetup.cmake b/CMake/HPHPSetup.cmake
-index 351db73..d73bf11 100644
+index 351db73..431a247 100644
 --- a/CMake/HPHPSetup.cmake
 +++ b/CMake/HPHPSetup.cmake
 @@ -115,7 +115,7 @@ IF($ENV{CXX} MATCHES "icpc")
@@ -7,10 +7,208 @@ index 351db73..d73bf11 100644
  else()
  	set(CMAKE_C_FLAGS "-w")
 -	set(CMAKE_CXX_FLAGS "-fno-gcse -fno-omit-frame-pointer -ftemplate-depth-60 -Wall -Woverloaded-virtual -Wno-deprecated -Wno-strict-aliasing -Wno-write-strings -Wno-invalid-offsetof -fno-operator-names -Wno-error=array-bounds -Wno-error=switch -std=gnu++0x -Werror=format-security -Wno-unused-result -Wno-sign-compare")
-+	set(CMAKE_CXX_FLAGS "-fno-gcse -fno-omit-frame-pointer -ftemplate-depth-128 -Wall -Woverloaded-virtual -Wno-deprecated -Wno-strict-aliasing -Wno-write-strings -Wno-invalid-offsetof -fno-operator-names -Wno-error=array-bounds -Wno-error=switch -std=gnu++0x -Werror=format-security -Wno-unused-result -Wno-sign-compare")
++	set(CMAKE_CXX_FLAGS "-fno-gcse -fno-omit-frame-pointer -ftemplate-depth-128 -Wall -Woverloaded-virtual -Wno-deprecated -Wno-strict-aliasing -Wno-write-strings -Wno-invalid-offsetof -fno-operator-names -Wno-error=array-bounds -Wno-error=switch -std=gnu++0x -Werror=format-security -Wno-unused-result -Wno-sign-compare -Wno-unused-local-typedefs")
  endif()
  
  IF(CMAKE_COMPILER_IS_GNUCC)
+diff --git a/hphp/compiler/analysis/alias_manager.cpp b/hphp/compiler/analysis/alias_manager.cpp
+index ae95a7e..f058683 100644
+--- a/hphp/compiler/analysis/alias_manager.cpp
++++ b/hphp/compiler/analysis/alias_manager.cpp
+@@ -1659,7 +1659,7 @@ ExpressionPtr AliasManager::canonicalizeNode(
+                     while (v->getCanonPtr() && v->getCanonPtr() != op0) {
+                       v = v->getCanonPtr();
+                     }
+-                    ok = v->getCanonPtr();
++                    ok = (v->getCanonPtr() != nullptr);
+                   }
+                   if (ok) {
+                     b2->setContext(Expression::DeadStore);
+diff --git a/hphp/compiler/analysis/class_scope.cpp b/hphp/compiler/analysis/class_scope.cpp
+index 2aab89b..9dbbdc0 100644
+--- a/hphp/compiler/analysis/class_scope.cpp
++++ b/hphp/compiler/analysis/class_scope.cpp
+@@ -3421,7 +3421,7 @@ void ClassScope::OutputVolatileCheckEnd(CodeGenerator &cg) {
+ void ClassScope::OutputVolatileCheck(CodeGenerator &cg, AnalysisResultPtr ar,
+                                      BlockScopePtr bs, const string &origName,
+                                      bool noThrow) {
+-  bool exist = ar->findClass(origName);
++  bool exist = (ar->findClass(origName) != nullptr);
+   cg_printf("%s%s(",
+             exist ? "checkClassExists" : "autoloadClass",
+             noThrow ? "NoThrow" : "Throw");
+diff --git a/hphp/compiler/analysis/control_flow.h b/hphp/compiler/analysis/control_flow.h
+index 6adbf83..65f7684 100644
+--- a/hphp/compiler/analysis/control_flow.h
++++ b/hphp/compiler/analysis/control_flow.h
+@@ -65,6 +65,8 @@ struct graph_traits<HPHP::ControlFlowGraph> {
+   typedef int vertices_size_type;
+   typedef int edges_size_type;
+   typedef std::list<HPHP::ControlEdge*>::size_type degree_size_type;
++
++  static vertex_descriptor null_vertex() { return nullptr; }
+ };
+ 
+ template<>
+diff --git a/hphp/compiler/analysis/expr_dict.cpp b/hphp/compiler/analysis/expr_dict.cpp
+index fd105ec..85710f2 100644
+--- a/hphp/compiler/analysis/expr_dict.cpp
++++ b/hphp/compiler/analysis/expr_dict.cpp
+@@ -14,8 +14,8 @@
+    +----------------------------------------------------------------------+
+ */
+ 
+-#include <compiler/analysis/alias_manager.h>
+ #include <compiler/analysis/expr_dict.h>
++#include <compiler/analysis/alias_manager.h>
+ 
+ #include <compiler/expression/expression.h>
+ #include <compiler/expression/assignment_expression.h>
+@@ -59,7 +59,7 @@ void ExprDict::getTypes(ExpressionPtr e, TypePtrIdxPairVec &types) {
+ 
+ class TypeFunc { public:
+   bool operator()(const TypePtrIdxPair& entry) const {
+-    return entry.first;
++    return entry.first != nullptr;
+   }
+ };
+ static TypeFunc s_type_func;
+diff --git a/hphp/compiler/analysis/function_scope.cpp b/hphp/compiler/analysis/function_scope.cpp
+index fa4112e..015ce9f 100644
+--- a/hphp/compiler/analysis/function_scope.cpp
++++ b/hphp/compiler/analysis/function_scope.cpp
+@@ -416,7 +416,7 @@ bool FunctionScope::hasImpl() const {
+   }
+   if (m_stmt) {
+     MethodStatementPtr stmt = dynamic_pointer_cast<MethodStatement>(m_stmt);
+-    return stmt->getStmts();
++    return stmt->getStmts() != nullptr;
+   }
+   return false;
+ }
+diff --git a/hphp/compiler/analysis/variable_table.cpp b/hphp/compiler/analysis/variable_table.cpp
+index 7dd1164..b5391f6 100644
+--- a/hphp/compiler/analysis/variable_table.cpp
++++ b/hphp/compiler/analysis/variable_table.cpp
+@@ -290,7 +290,7 @@ ConstructPtr VariableTable::getStaticInitVal(string varName) {
+ bool VariableTable::setStaticInitVal(string varName,
+                                      ConstructPtr value) {
+   Symbol *sym = addSymbol(varName);
+-  bool exists = sym->getStaticInitVal();
++  bool exists = (sym->getStaticInitVal() != nullptr);
+   sym->setStaticInitVal(value);
+   return exists;
+ }
+@@ -304,7 +304,7 @@ ConstructPtr VariableTable::getClassInitVal(string varName) {
+ 
+ bool VariableTable::setClassInitVal(string varName, ConstructPtr value) {
+   Symbol *sym = addSymbol(varName);
+-  bool exists = sym->getClassInitVal();
++  bool exists = (sym->getClassInitVal() != nullptr);
+   sym->setClassInitVal(value);
+   return exists;
+ }
+diff --git a/hphp/compiler/expression/expression_list.cpp b/hphp/compiler/expression/expression_list.cpp
+index 6fa03ff..def2611 100644
+--- a/hphp/compiler/expression/expression_list.cpp
++++ b/hphp/compiler/expression/expression_list.cpp
+@@ -210,7 +210,7 @@ bool ExpressionList::getScalarValue(Variant &value) {
+           Variant v;
+           bool ret1 = name->getScalarValue(n);
+           bool ret2 = val->getScalarValue(v);
+-          if (!(ret1 && ret2)) return ExpressionPtr();
++          if (!(ret1 && ret2)) return false;
+           init.set(n, v);
+         }
+       }
+diff --git a/hphp/compiler/expression/parameter_expression.h b/hphp/compiler/expression/parameter_expression.h
+index e91684b..3704ea7 100644
+--- a/hphp/compiler/expression/parameter_expression.h
++++ b/hphp/compiler/expression/parameter_expression.h
+@@ -37,7 +37,7 @@ public:
+   DECLARE_EXPRESSION_VIRTUAL_FUNCTIONS;
+ 
+   bool isRef() const { return m_ref;}
+-  bool isOptional() const { return m_defaultValue;}
++  bool isOptional() const { return m_defaultValue != nullptr;}
+   bool hasRTTI() const { return m_hasRTTI;}
+   void setHasRTTI() { m_hasRTTI = true;}
+   const std::string &getName() const { return m_name; }
+diff --git a/hphp/compiler/parser/parser.cpp b/hphp/compiler/parser/parser.cpp
+index f87d35f..70228cd 100644
+--- a/hphp/compiler/parser/parser.cpp
++++ b/hphp/compiler/parser/parser.cpp
+@@ -1509,7 +1509,7 @@ void Parser::onForEach(Token &out, Token &arr, Token &name, Token &value,
+ 
+     if (hasYield) {
+       int cnt = ++m_funcContexts.back().numForeaches;
+-      transform_foreach(this, out, arr, name, value, stmt, cnt, value->exp,
++      transform_foreach(this, out, arr, name, value, stmt, cnt, (value->exp != nullptr),
+                         value->exp ? value->num() == 1 : name->num() == 1);
+       return;
+     }
+diff --git a/hphp/compiler/statement/method_statement.cpp b/hphp/compiler/statement/method_statement.cpp
+index cfa5a7d..8c3adeb 100644
+--- a/hphp/compiler/statement/method_statement.cpp
++++ b/hphp/compiler/statement/method_statement.cpp
+@@ -1477,7 +1477,7 @@ void MethodStatement::outputCPPFFIStub(CodeGenerator &cg,
+   FunctionScopeRawPtr funcScope = getFunctionScope();
+   ClassScopePtr clsScope = getClassScope();
+   bool varArgs = funcScope->isVariableArgument();
+-  bool ret = funcScope->getReturnType();
++  bool ret = (funcScope->getReturnType() != nullptr);
+   string fname = funcScope->getId();
+   bool inClass = !m_className.empty();
+   bool isStatic = !inClass || m_modifiers->isStatic();
+@@ -1588,7 +1588,7 @@ void MethodStatement::outputHSFFIStub(CodeGenerator &cg, AnalysisResultPtr ar) {
+ 
+   FunctionScopeRawPtr funcScope = getFunctionScope();
+   bool varArgs = funcScope->isVariableArgument();
+-  bool ret = funcScope->getReturnType();
++  bool ret = (funcScope->getReturnType() != nullptr);
+   string fname = funcScope->getId().c_str();
+   cg_indentBegin("foreign import ccall \"stubs.h %s%s\" %s%s\n",
+                  Option::FFIFnPrefix, fname.c_str(),
+@@ -1694,7 +1694,7 @@ void MethodStatement::outputJavaFFIStub(CodeGenerator &cg,
+                                         AnalysisResultPtr ar) {
+   FunctionScopeRawPtr funcScope = getFunctionScope();
+   bool varArgs = funcScope->isVariableArgument();
+-  bool ret = funcScope->getReturnType();
++  bool ret = (funcScope->getReturnType() != nullptr);
+   bool inClass = !m_className.empty();
+   bool isStatic = !inClass || m_modifiers->isStatic();
+   string fname = funcScope->getId();
+@@ -1814,7 +1814,7 @@ void MethodStatement::outputJavaFFICPPStub(CodeGenerator &cg,
+ 
+   FunctionScopeRawPtr funcScope = getFunctionScope();
+   bool varArgs = funcScope->isVariableArgument();
+-  bool ret = funcScope->getReturnType();
++  bool ret = (funcScope->getReturnType() != nullptr);
+   bool inClass = !m_className.empty();
+   bool isStatic = !inClass || m_modifiers->isStatic();
+   string fname = funcScope->getId();
+@@ -1909,7 +1909,7 @@ void MethodStatement::outputSwigFFIStub(CodeGenerator &cg,
+                                         AnalysisResultPtr ar) {
+   FunctionScopeRawPtr funcScope = getFunctionScope();
+   bool varArgs = funcScope->isVariableArgument();
+-  bool ret = funcScope->getReturnType();
++  bool ret = (funcScope->getReturnType() != nullptr);
+   string fname = funcScope->getId();
+   string originalName = funcScope->getOriginalName();
+   int ac = funcScope->getMaxParamCount();
+diff --git a/hphp/compiler/statement/return_statement.h b/hphp/compiler/statement/return_statement.h
+index 2307662..5e11f94 100644
+--- a/hphp/compiler/statement/return_statement.h
++++ b/hphp/compiler/statement/return_statement.h
+@@ -29,7 +29,7 @@ public:
+   ReturnStatement(STATEMENT_CONSTRUCTOR_PARAMETERS, ExpressionPtr exp);
+ 
+   DECLARE_STATEMENT_VIRTUAL_FUNCTIONS;
+-  virtual bool hasRetExp() const { return m_exp; }
++  virtual bool hasRetExp() const { return m_exp != nullptr; }
+   ExpressionPtr getRetExp() const { return m_exp; }
+ 
+   // During analysis we tag ReturnStatement with a list of the locals
 diff --git a/hphp/legacy/run.sh b/hphp/legacy/run.sh
 index bede609..cc75d66 100755
 --- a/hphp/legacy/run.sh
@@ -92,6 +290,209 @@ index a69d0b8..e5dd7ac 100644
      IntegerStringDataMap::const_iterator it =
        integer_string_data_map.find(n);
      if (it != integer_string_data_map.end()) return it->second;
+diff --git a/hphp/runtime/eval/debugger/cmd/cmd_info.cpp b/hphp/runtime/eval/debugger/cmd/cmd_info.cpp
+index 1e6726f..51c5dcb 100644
+--- a/hphp/runtime/eval/debugger/cmd/cmd_info.cpp
++++ b/hphp/runtime/eval/debugger/cmd/cmd_info.cpp
+@@ -32,7 +32,7 @@ void CmdInfo::sendImpl(DebuggerThriftBuffer &thrift) {
+     thrift.write(true);
+     thrift.write((int8)DebuggerClient::AutoCompleteCount);
+     for (int i = 0; i < DebuggerClient::AutoCompleteCount; i++) {
+-      thrift.write((*m_acLiveLists)[i]);
++      thrift.write(m_acLiveLists[i]);
+     }
+   } else {
+     thrift.write(false);
+@@ -52,7 +52,7 @@ void CmdInfo::recvImpl(DebuggerThriftBuffer &thrift) {
+     thrift.read(count);
+     for (int i = 0; i < count; i++) {
+       if (i < DebuggerClient::AutoCompleteCount) {
+-        thrift.read((*m_acLiveLists)[i]);
++        thrift.read(m_acLiveLists[i]);
+       } else {
+         vector<std::string> future;
+         thrift.read(future);
+@@ -213,7 +213,7 @@ bool CmdInfo::onServer(DebuggerProxy *proxy) {
+ 
+     for (unsigned int i = 0 ; i < sizeof(tempList)/sizeof(int); ++i) {
+       for (unsigned int j = 0 ; j < tmpAcLiveLists[tempList[i]].size(); ++j) {
+-        (*m_acLiveLists)[tempList[i]].push_back(
++        m_acLiveLists[tempList[i]].push_back(
+           tmpAcLiveLists[tempList[i]][j]->toCPPString());
+       }
+     }
+@@ -231,7 +231,7 @@ bool CmdInfo::onServer(DebuggerProxy *proxy) {
+       }
+     }
+     vector<std::string> &vars =
+-      (*m_acLiveLists)[DebuggerClient::AutoCompleteVariables];
++      m_acLiveLists[DebuggerClient::AutoCompleteVariables];
+     vars.reserve(variables.size());
+     for (ArrayIter iter(variables); iter; ++iter) {
+       vars.push_back("$" + iter.first().toString()->toCPPString());
+diff --git a/hphp/runtime/eval/debugger/debugger_client.cpp b/hphp/runtime/eval/debugger/debugger_client.cpp
+index f96507e..c61b0b0 100644
+--- a/hphp/runtime/eval/debugger/debugger_client.cpp
++++ b/hphp/runtime/eval/debugger/debugger_client.cpp
+@@ -771,7 +771,7 @@ std::vector<std::string> DebuggerClient::getAllCompletions(
+   }
+ 
+   for (int i = 0; i < AutoCompleteCount; ++i) {
+-    const std::vector<std::string> &items = (*m_acLiveLists)[i];
++    const std::vector<std::string> &items = m_acLiveLists[i];
+     for (size_t j = 0; j < items.size(); ++j) {
+       const char *p = items[j].c_str();
+       if (strncasecmp(p, text.c_str(), text.length()) == 0) {
+@@ -859,7 +859,7 @@ char *DebuggerClient::getCompletion(const char *text, int state) {
+         updateLiveLists();
+         assert(!m_acLiveListsDirty);
+       }
+-      char *p = getCompletion((*m_acLiveLists)[(int64)list], text);
++      char *p = getCompletion(m_acLiveLists[(int64_t)list], text);
+       if (p) return p;
+     } else {
+       for (const char *p = list[++m_acPos]; p; p = list[++m_acPos]) {
+diff --git a/hphp/runtime/eval/debugger/debugger_client.h b/hphp/runtime/eval/debugger/debugger_client.h
+index cee1d1d..7f9757f 100644
+--- a/hphp/runtime/eval/debugger/debugger_client.h
++++ b/hphp/runtime/eval/debugger/debugger_client.h
+@@ -17,6 +17,8 @@
+ #ifndef __HPHP_EVAL_DEBUGGER_CLIENT_H__
+ #define __HPHP_EVAL_DEBUGGER_CLIENT_H__
+ 
++#include <boost/smart_ptr/shared_array.hpp>
++
+ #include <runtime/eval/debugger/debugger.h>
+ #include <runtime/eval/debugger/debugger_client_settings.h>
+ #include <runtime/eval/debugger/inst_point.h>
+@@ -89,10 +91,10 @@ public:
+   };
+   static const char **GetCommands();
+ 
+-  typedef std::vector<std::string> LiveLists[DebuggerClient::AutoCompleteCount];
+-  typedef boost::shared_ptr<LiveLists> LiveListsPtr;
++  typedef std::vector<std::string> LiveList;
++  typedef boost::shared_array<LiveList> LiveListsPtr;
+   static LiveListsPtr CreateNewLiveLists() {
+-    return LiveListsPtr(new LiveLists[DebuggerClient::AutoCompleteCount]());
++    return LiveListsPtr(new LiveList[DebuggerClient::AutoCompleteCount]);
+   }
+   std::vector<std::string> getAllCompletions(std::string const &text);
+ 
+@@ -264,7 +266,7 @@ public:
+   void addCompletion(const char **list);
+   void addCompletion(const char *name);
+   void addCompletion(const std::vector<std::string> &items);
+-  void setLiveLists(LiveListsPtr liveLists) { m_acLiveLists = liveLists;}
++  void setLiveLists(LiveListsPtr liveLists) { m_acLiveLists = liveLists; }
+ 
+   /**
+    * For DebuggerClient API
+diff --git a/hphp/runtime/ext/ext_image.cpp b/hphp/runtime/ext/ext_image.cpp
+index 446538e..841d318 100644
+--- a/hphp/runtime/ext/ext_image.cpp
++++ b/hphp/runtime/ext/ext_image.cpp
+@@ -2371,6 +2371,11 @@ int skipheader (int (*getin) (void *in), void *in) {
+   return (0);
+ }
+ 
++static int __my_gdGetC (gdIOCtx * ctx)
++{
++	return ((ctx->getC) (ctx));
++}
++
+ static int _php_image_type (char data[8]) {
+ #ifdef HAVE_LIBGD15
+ 
+@@ -2394,8 +2399,8 @@ static int _php_image_type (char data[8]) {
+     gdIOCtx *io_ctx;
+     io_ctx = gdNewDynamicCtxEx(8, data, 0);
+     if (io_ctx) {
+-      if (getmbi((int(*)(void *)) gdGetC, io_ctx) == 0 &&
+-          skipheader((int(*)(void *)) gdGetC, io_ctx) == 0 ) {
++      if (getmbi((int(*)(void *)) __my_gdGetC, io_ctx) == 0 &&
++          skipheader((int(*)(void *)) __my_gdGetC, io_ctx) == 0 ) {
+ #if HAVE_LIBGD204
+         io_ctx->gd_free(io_ctx);
+ #else
+@@ -4155,77 +4160,6 @@ bool f_imagefilter(CObjRef image, int filtertype,
+   return false;
+ }
+ 
+-// gdImageConvolution does not exist in our libgd.a, copied from
+-// php's libgd/gd.c
+-
+-/* Filters function added on 2003/12
+- * by Pierre-Alain Joye (pajoye@pearfr.org)
+- **/
+-/* Begin filters function */
+-#ifndef HAVE_GET_TRUE_COLOR
+-#define GET_PIXEL_FUNCTION(src) \
+-  (src->trueColor?gdImageGetTrueColorPixel:gdImageGetPixel)
+-#endif
+-
+-static int gdImageConvolution(gdImagePtr src, float filter[3][3],
+-                              float filter_div, float offset) {
+-  int x, y, i, j, new_a;
+-  float new_r, new_g, new_b;
+-  int new_pxl, pxl=0;
+-  gdImagePtr srcback;
+-  typedef int (*FuncPtr)(gdImagePtr, int, int);
+-  FuncPtr f;
+-
+-  if (src==NULL) {
+-    return 0;
+-  }
+-
+-  /* We need the orinal image with each safe neoghb. pixel */
+-  srcback = gdImageCreateTrueColor (src->sx, src->sy);
+-  gdImageCopy(srcback, src,0,0,0,0,src->sx,src->sy);
+-
+-  if (srcback==NULL) {
+-    return 0;
+-  }
+-
+-  f = GET_PIXEL_FUNCTION(src);
+-
+-  for ( y=0; y<src->sy; y++) {
+-    for(x=0; x<src->sx; x++) {
+-      new_r = new_g = new_b = 0;
+-      new_a = gdImageAlpha(srcback, pxl);
+-
+-      for (j=0; j<3; j++) {
+-        int yv = MIN(MAX(y - 1 + j, 0), src->sy - 1);
+-        for (i=0; i<3; i++) {
+-                pxl = f(srcback, MIN(MAX(x - 1 + i, 0), src->sx - 1), yv);
+-          new_r += (float)gdImageRed(srcback, pxl) * filter[j][i];
+-          new_g += (float)gdImageGreen(srcback, pxl) * filter[j][i];
+-          new_b += (float)gdImageBlue(srcback, pxl) * filter[j][i];
+-        }
+-      }
+-
+-      new_r = (new_r/filter_div)+offset;
+-      new_g = (new_g/filter_div)+offset;
+-      new_b = (new_b/filter_div)+offset;
+-
+-      new_r = (new_r > 255.0f)? 255.0f : ((new_r < 0.0f)? 0.0f:new_r);
+-      new_g = (new_g > 255.0f)? 255.0f : ((new_g < 0.0f)? 0.0f:new_g);
+-      new_b = (new_b > 255.0f)? 255.0f : ((new_b < 0.0f)? 0.0f:new_b);
+-
+-      new_pxl = gdImageColorAllocateAlpha(src, (int)new_r, (int)new_g,
+-                                          (int)new_b, new_a);
+-      if (new_pxl == -1) {
+-        new_pxl = gdImageColorClosestAlpha(src, (int)new_r, (int)new_g,
+-                                          (int)new_b, new_a);
+-      }
+-      gdImageSetPixel (src, x, y, new_pxl);
+-    }
+-  }
+-  gdImageDestroy(srcback);
+-  return 1;
+-}
+-
+ bool f_imageconvolution(CObjRef image, CArrRef matrix,
+                         double div, double offset) {
+   gdImagePtr im_src = image.getTyped<Image>()->get();
 diff --git a/hphp/runtime/tmp/test.mk b/hphp/runtime/tmp/test.mk
 index 1ad42c8..3e903e6 100644
 --- a/hphp/runtime/tmp/test.mk
@@ -105,6 +506,19 @@ index 1ad42c8..3e903e6 100644
  ZEND_WARN = -ddisplay_errors=stderr -dapc.enable_cli=1
  ZEND_NOWARN = -ddisplay_errors=off -dapc.enable_cli=1
  
+diff --git a/hphp/runtime/vm/translator/physreg.h b/hphp/runtime/vm/translator/physreg.h
+index dc6c746..3f2c9e2 100644
+--- a/hphp/runtime/vm/translator/physreg.h
++++ b/hphp/runtime/vm/translator/physreg.h
+@@ -218,7 +218,7 @@ private:
+   uint64_t m_bits;
+ };
+ 
+-static_assert(std::has_trivial_destructor<RegSet>::value,
++static_assert(std::is_trivially_destructible<RegSet>::value,
+               "RegSet must have a trivial destructor");
+ 
+ //////////////////////////////////////////////////////////////////////
 diff --git a/hphp/test/test_memcached_info.inc b/hphp/test/test_memcached_info.inc
 index c36489a..603529e 100644
 --- a/hphp/test/test_memcached_info.inc
@@ -114,3 +528,50 @@ index c36489a..603529e 100644
 -#define TEST_MEMCACHED_HOSTNAME ""
 +#define TEST_MEMCACHED_HOSTNAME "localhost"
  #define TEST_MEMCACHED_PORT     11211
+diff --git a/hphp/third_party/folly/folly/FBVector.h b/hphp/third_party/folly/folly/FBVector.h
+index 18b1c8c..e4bdb57 100644
+--- a/hphp/third_party/folly/folly/FBVector.h
++++ b/hphp/third_party/folly/folly/FBVector.h
+@@ -428,7 +428,7 @@ private:
+ 
+   void M_destroy(T* p) noexcept {
+     if (usingStdAllocator::value) {
+-      if (!std::has_trivial_destructor<T>::value) p->~T();
++      if (!std::is_trivially_destructible<T>::value) p->~T();
+     } else {
+       folly::fbv_allocator_traits<Allocator>::destroy(impl_, p);
+     }
+@@ -466,7 +466,7 @@ private:
+ 
+   // optimized
+   static void S_destroy_range(T* first, T* last) noexcept {
+-    if (!std::has_trivial_destructor<T>::value) {
++    if (!std::is_trivially_destructible<T>::value) {
+       // EXPERIMENTAL DATA on fbvector<vector<int>> (where each vector<int> has
+       //  size 0).
+       // The unrolled version seems to work faster for small to medium sized
+diff --git a/hphp/third_party/folly/folly/ProducerConsumerQueue.h b/hphp/third_party/folly/folly/ProducerConsumerQueue.h
+index 670f725..4596a55 100644
+--- a/hphp/third_party/folly/folly/ProducerConsumerQueue.h
++++ b/hphp/third_party/folly/folly/ProducerConsumerQueue.h
+@@ -59,7 +59,7 @@ struct ProducerConsumerQueue : private boost::noncopyable {
+     // We need to destruct anything that may still exist in our queue.
+     // (No real synchronization needed at destructor time: only one
+     // thread can be doing this.)
+-    if (!std::has_trivial_destructor<T>::value) {
++    if (!std::is_trivially_destructible<T>::value) {
+       int read = readIndex_;
+       int end = writeIndex_;
+       while (read != end) {
+diff --git a/hphp/third_party/folly/folly/detail/ThreadLocalDetail.h b/hphp/third_party/folly/folly/detail/ThreadLocalDetail.h
+index 505682f..cc9dcde 100644
+--- a/hphp/third_party/folly/folly/detail/ThreadLocalDetail.h
++++ b/hphp/third_party/folly/folly/detail/ThreadLocalDetail.h
+@@ -24,6 +24,7 @@
+ #include <vector>
+ 
+ #include <boost/thread/mutex.hpp>
++#include <boost/thread/lock_guard.hpp>
+ 
+ #include <glog/logging.h>
+ 
