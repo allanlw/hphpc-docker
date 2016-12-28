@@ -879,6 +879,26 @@ index 18b1c8c..e4bdb57 100644
        // EXPERIMENTAL DATA on fbvector<vector<int>> (where each vector<int> has
        //  size 0).
        // The unrolled version seems to work faster for small to medium sized
+diff --git a/hphp/third_party/folly/folly/Portability.h b/hphp/third_party/folly/folly/Portability.h
+index a8d2d9e..ccd0aaf 100644
+--- a/hphp/third_party/folly/folly/Portability.h
++++ b/hphp/third_party/folly/folly/Portability.h
+@@ -52,6 +52,15 @@
+ # define FOLLY_OVERRIDE
+ #endif
+ 
++// If the new c++ ABI is used, __cxx11 inline namespace needs to be added to
++// some types, e.g. std::list.
++#if _GLIBCXX_USE_CXX11_ABI
++# define FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN _GLIBCXX_BEGIN_NAMESPACE_CXX11
++# define FOLLY_GLIBCXX_NAMESPACE_CXX11_END   _GLIBCXX_END_NAMESPACE_CXX11
++#else
++# define FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN
++# define FOLLY_GLIBCXX_NAMESPACE_CXX11_END
++#endif
+ 
+ // MaxAlign: max_align_t isn't supported by gcc
+ #ifdef __GNUC__
 diff --git a/hphp/third_party/folly/folly/ProducerConsumerQueue.h b/hphp/third_party/folly/folly/ProducerConsumerQueue.h
 index 670f725..4596a55 100644
 --- a/hphp/third_party/folly/folly/ProducerConsumerQueue.h
@@ -892,6 +912,41 @@ index 670f725..4596a55 100644
        int read = readIndex_;
        int end = writeIndex_;
        while (read != end) {
+diff --git a/hphp/third_party/folly/folly/Traits.h b/hphp/third_party/folly/folly/Traits.h
+index d3002dc..5e7ca6e 100644
+--- a/hphp/third_party/folly/folly/Traits.h
++++ b/hphp/third_party/folly/folly/Traits.h
+@@ -22,6 +22,8 @@
+ #include <memory>
+ #include <type_traits>
+ 
++#include <folly/Portability.h>
++
+ #include <bits/c++config.h>
+ 
+ #include <boost/type_traits.hpp>
+@@ -227,8 +229,10 @@ namespace std {
+ template <class T, class U>
+   struct pair;
+ #ifndef _GLIBCXX_USE_FB
++FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN
+ template <class T, class R, class A>
+   class basic_string;
++FOLLY_GLIBCXX_NAMESPACE_CXX11_END
+ #else
+ template <class T, class R, class A, class S>
+   class basic_string;
+@@ -237,8 +241,10 @@ template <class T, class A>
+   class vector;
+ template <class T, class A>
+   class deque;
++FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN
+ template <class T, class A>
+   class list;
++FOLLY_GLIBCXX_NAMESPACE_CXX11_END
+ template <class T, class C, class A>
+   class set;
+ template <class K, class V, class C, class A>
 diff --git a/hphp/third_party/folly/folly/detail/ThreadLocalDetail.h b/hphp/third_party/folly/folly/detail/ThreadLocalDetail.h
 index 505682f..cc9dcde 100644
 --- a/hphp/third_party/folly/folly/detail/ThreadLocalDetail.h

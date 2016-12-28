@@ -1,4 +1,4 @@
-FROM ubuntu:15.04
+FROM ubuntu:15.10
 
 # The commands in this file are sourced from
 # https://github.com/facebook/hhvm/wiki/Building-and-installing-HHVM-on-Ubuntu-12.04/2c4d922e8284805d05cc3917a0de2ffe22f69cfd
@@ -50,7 +50,7 @@ RUN ln -s hphp src && \
 RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo . && \
     /hphpc/hhvm/hphp/tools/generate_compiler_id.sh && \
     /hphpc/hhvm/hphp/tools/generate_repo_schema.sh && \
-    make -j$(nproc) -k
+    make -j$(nproc)
 
 # Environment for tests to run correctly.
 
