@@ -242,6 +242,55 @@ index e6f53e1..6375aa0 100644
  
  endif
  
+diff --git a/hphp/runtime/base/ref_data.h b/hphp/runtime/base/ref_data.h
+index 83abe75..ac7db33 100644
+--- a/hphp/runtime/base/ref_data.h
++++ b/hphp/runtime/base/ref_data.h
+@@ -60,7 +60,7 @@ private:
+       m_tv.m_type = KindOfNull;
+     }
+   }
+-private:
++public:
+   union {
+     // overlap TypedValue with an explicit struct to expose the _count
+     // field to the macro-expanded refcount methods above.
+diff --git a/hphp/runtime/base/shared/shared_variant.h b/hphp/runtime/base/shared/shared_variant.h
+index 4ad881d..26016c2 100644
+--- a/hphp/runtime/base/shared/shared_variant.h
++++ b/hphp/runtime/base/shared/shared_variant.h
+@@ -193,6 +193,7 @@ private:
+ 
+ #endif
+ 
++public:
+   struct SharedVar {
+     SharedVarData;
+   };
+@@ -205,6 +206,7 @@ private:
+   };
+ #undef SharedVarData
+ 
++private:
+   const static uint8 SerializedArray = (1<<0);
+   const static uint8 IsVector = (1<<1);
+   const static uint8 IsObj = (1<<2);
+diff --git a/hphp/runtime/base/string_data.h b/hphp/runtime/base/string_data.h
+index c1ee07b..c63c653 100644
+--- a/hphp/runtime/base/string_data.h
++++ b/hphp/runtime/base/string_data.h
+@@ -397,9 +397,8 @@ public:
+     struct __attribute__((__packed__)) {
+       // Calculate padding so that node, shared, and cap are pointer aligned,
+       // and ensure cap overlaps the last byte of m_small.
+-      static const size_t kPadding = sizeof(m_small) -
+-        sizeof(SweepNode) - sizeof(SharedVariant*) - sizeof(uint64_t);
+-      char junk[kPadding];
++      char junk[sizeof(m_small) -
++        sizeof(SweepNode) - sizeof(SharedVariant*) - sizeof(uint64_t)];
+       SweepNode node;
+       SharedVariant *shared;
+       uint64_t cap;
 diff --git a/hphp/runtime/base/type_string.cpp b/hphp/runtime/base/type_string.cpp
 index 0290872..fc25f4f 100644
 --- a/hphp/runtime/base/type_string.cpp
@@ -290,6 +339,19 @@ index a69d0b8..e5dd7ac 100644
      IntegerStringDataMap::const_iterator it =
        integer_string_data_map.find(n);
      if (it != integer_string_data_map.end()) return it->second;
+diff --git a/hphp/runtime/base/type_variant.h b/hphp/runtime/base/type_variant.h
+index c8b134f..ace81ae 100644
+--- a/hphp/runtime/base/type_variant.h
++++ b/hphp/runtime/base/type_variant.h
+@@ -1201,7 +1201,7 @@ public:
+     ObjectData  *pobj;
+     RefData     *pref; // shared data between strongly bound Variants
+   } m_data;
+- protected:
++ public:
+   union {
+     // Anonymous: just use _count, m_type
+     struct {
 diff --git a/hphp/runtime/eval/debugger/cmd/cmd_info.cpp b/hphp/runtime/eval/debugger/cmd/cmd_info.cpp
 index 1e6726f..51c5dcb 100644
 --- a/hphp/runtime/eval/debugger/cmd/cmd_info.cpp
@@ -493,6 +555,95 @@ index 446538e..841d318 100644
  bool f_imageconvolution(CObjRef image, CArrRef matrix,
                          double div, double offset) {
    gdImagePtr im_src = image.getTyped<Image>()->get();
+diff --git a/hphp/runtime/ext/ext_memcache.cpp b/hphp/runtime/ext/ext_memcache.cpp
+index 764b178..b16f317 100644
+--- a/hphp/runtime/ext/ext_memcache.cpp
++++ b/hphp/runtime/ext/ext_memcache.cpp
+@@ -375,13 +375,13 @@ Variant c_Memcache::t_getversion() {
+     memcached_server_instance_st instance =
+       memcached_server_instance_by_position(&m_memcache, x);
+ 
+-    if (!instance->major_version) {
++    if (!memcached_server_major_version(instance)) {
+       continue;
+     }
+ 
+     version_len = snprintf(version, sizeof(version), "%d.%d.%d",
+-        instance->major_version, instance->minor_version,
+-        instance->micro_version);
++        memcached_server_major_version(instance), memcached_server_minor_version(instance),
++        memcached_server_micro_version(instance));
+     return String(version, version_len, CopyString);
+   }
+ 
+@@ -481,8 +481,8 @@ Array c_Memcache::t_getstats(CStrRef type /* = null_string */,
+     memcached_server_instance_by_position(&m_memcache, 0);
+ 
+   memcached_stat_st stats;
+-  if (memcached_stat_servername(&stats, extra_args, instance->hostname,
+-                                instance->port) != MEMCACHED_SUCCESS) {
++  if (memcached_stat_servername(&stats, extra_args,  memcached_server_name(instance),
++                                memcached_server_port(instance)) != MEMCACHED_SUCCESS) {
+     return NULL;
+   }
+ 
+@@ -521,7 +521,7 @@ Array c_Memcache::t_getextendedstats(CStrRef type /* = null_string */,
+     }
+ 
+     key_len = snprintf(stats_key, sizeof(stats_key),
+-                       "%s:%d", server->hostname, server->port);
++                       "%s:%d", memcached_server_name(server), memcached_server_port(server));
+ 
+     return_val.set(String(stats_key, key_len, CopyString), server_stats);
+   }
+diff --git a/hphp/runtime/ext/ext_memcached.cpp b/hphp/runtime/ext/ext_memcached.cpp
+index 9541fb0..06186c9 100644
+--- a/hphp/runtime/ext/ext_memcached.cpp
++++ b/hphp/runtime/ext/ext_memcached.cpp
+@@ -635,8 +635,8 @@ namespace {
+ memcached_return_t doServerListCallback(const memcached_st *ptr,
+     memcached_server_instance_st server, void *context) {
+   Array *returnValue = (Array*) context;
+-  returnValue->append(CREATE_MAP3("host", String(server->hostname, CopyString),
+-                                  "port", (int32)server->port,
++  returnValue->append(CREATE_MAP3("host", String(memcached_server_name(server), CopyString),
++                                  "port", (int32)memcached_server_port(server),
+                                   "weight", (int32)server->weight));
+   return MEMCACHED_SUCCESS;
+ }
+@@ -666,8 +666,8 @@ Variant c_Memcached::t_getserverbykey(CStrRef server_key) {
+     return false;
+   }
+ 
+-  Array returnValue = CREATE_MAP3("host", String(server->hostname, CopyString),
+-                                  "port", (int32)server->port,
++  Array returnValue = CREATE_MAP3("host", String(memcached_server_name(server), CopyString),
++                                  "port", (int32)memcached_server_port(server),
+                                   "weight", (int32)server->weight);
+   return returnValue;
+ }
+@@ -682,7 +682,7 @@ memcached_return_t doStatsCallback(const memcached_st *ptr,
+     memcached_server_instance_st server, void *inContext) {
+   StatsContext *context = (StatsContext*) inContext;
+   char key[NI_MAXHOST + 6];
+-  snprintf(key, sizeof(key), "%s:%d", server->hostname, server->port);
++  snprintf(key, sizeof(key), "%s:%d", memcached_server_name(server), memcached_server_port(server));
+   memcached_stat_st *stats = context->stats;
+   ssize_t i = context->returnValue.size();
+ 
+@@ -741,9 +741,9 @@ memcached_return_t doVersionCallback(const memcached_st *ptr,
+     memcached_server_instance_st server, void *context) {
+   Array *returnValue = (Array*) context;
+   char key[NI_MAXHOST + 6], version[16];
+-  snprintf(key, sizeof(key), "%s:%d", server->hostname, server->port);
+-  snprintf(version, sizeof(version), "%d.%d.%d", server->major_version,
+-           server->minor_version, server->micro_version);
++  snprintf(key, sizeof(key), "%s:%d", memcached_server_name(server), memcached_server_port(server));
++  snprintf(version, sizeof(version), "%d.%d.%d", memcached_server_major_version(server),
++           memcached_server_minor_version(server), memcached_server_micro_version(server));
+   returnValue->set(String(key, CopyString), String(version, CopyString));
+   return MEMCACHED_SUCCESS;
+ }
 diff --git a/hphp/runtime/tmp/test.mk b/hphp/runtime/tmp/test.mk
 index 1ad42c8..3e903e6 100644
 --- a/hphp/runtime/tmp/test.mk

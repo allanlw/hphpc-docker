@@ -1,4 +1,4 @@
-FROM ubuntu:14.04
+FROM ubuntu:14.10
 
 # The commands in this file are sourced from
 # https://github.com/facebook/hhvm/wiki/Building-and-installing-HHVM-on-Ubuntu-12.04/2c4d922e8284805d05cc3917a0de2ffe22f69cfd
@@ -12,7 +12,7 @@ RUN ( apt-get update || ( sed -i -e 's/archive.ubuntu.com/old-releases.ubuntu.co
   libreadline-dev libncurses-dev libmemcached-dev libbz2-dev \
   libc-client2007e-dev php5-mcrypt php5-imagick libgoogle-perftools-dev \
   libcloog-ppl1 libelf-dev libdwarf-dev libunwind8-dev subversion php5-cli \
-  python libgoogle-glog-dev libiberty-dev
+  python libgoogle-glog-dev libiberty-dev libldap2-dev
 
 RUN mkdir /hphpc
 WORKDIR /hphpc
@@ -50,7 +50,7 @@ RUN ln -s hphp src && \
 RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo . && \
     /hphpc/hhvm/hphp/tools/generate_compiler_id.sh && \
     /hphpc/hhvm/hphp/tools/generate_repo_schema.sh && \
-    make -j$(nproc)
+    make -j$(nproc) -k
 
 # Environment for tests to run correctly.
 
