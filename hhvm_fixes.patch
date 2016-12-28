@@ -209,6 +209,21 @@ index 2307662..5e11f94 100644
    ExpressionPtr getRetExp() const { return m_exp; }
  
    // During analysis we tag ReturnStatement with a list of the locals
+diff --git a/hphp/dirs.mk b/hphp/dirs.mk
+index af86297..6119bee 100644
+--- a/hphp/dirs.mk
++++ b/hphp/dirs.mk
+@@ -32,7 +32,9 @@ overall: all quiet-1
+ 
+ # Add quiet as a dependent to prevent "nothing to do for... warnings from make"
+ .PHONY: quiet quiet-%
+-quiet quiet-%:
++quiet:
++	@true
++quiet-%:
+ 	@true
+ 
+ ###############################################################################
 diff --git a/hphp/legacy/run.sh b/hphp/legacy/run.sh
 index bede609..cc75d66 100755
 --- a/hphp/legacy/run.sh
