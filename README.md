@@ -100,7 +100,7 @@ To further placate the test suite, the script in /test/test.sh performs addition
 before calling the test suite during the build. It resolves the IP address of www.iana.org
  and changes the hosts file to point example.com and www.example.com to point to it.
 This is because a test expects example.com to serve
-a Connection header, and it no longer does (www.ianai.com seems to for now).
+a Connection header, and it no longer does (www.iana.org seems to for now).
 Next, it removes the ipv6 address for localhost,
 as a test expects that localhost will only have a single address returned from gethostbyname.
 It also changes the first alias of 127.0.0.1 to be localhost.localdomain to satisfy a different
