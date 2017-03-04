@@ -96,7 +96,13 @@ in more than one group), generates the German, Finish, French and English locale
 expects these to be present), and changes the timezone to "America/Los_Angeles" (again, a test
 expects this).
 
-To further placate the test suite, the script in /test/test.sh performs additional initilization
+The Dockerfile then builds hphpc and then runs a small test suite.
+Two scripts that are not happy 
+being called outside of a git repository and break parallel builds are called manually 
+before kicking off `make`, but after that make is run in parallel. When it's done, the test
+script in /test/test.sh is run.
+
+The script in /test/test.sh performs additional initilization
 before calling the test suite during the build. It resolves the IP address of www.iana.org
  and changes the hosts file to point example.com and www.example.com to point to it.
 This is because a test expects example.com to serve
@@ -112,12 +118,6 @@ tests except for TestExtMysql and TestExtPdo, which have not yet been fixed. Qui
 tests some internal runtime functionality, the extension tests are unit tests for the 
 individual builtin extensions, and TestCodeRun::TestSanity is an integration test to
 ensure that a simple test program can be built successfully.
-
-Finally, a few changes are made as small optimizations. Two scripts that are not happy 
-being called outside of a git repository and break parallel builds are called manually 
-before kicking off `make`, and when running the tests /dev/random is symlinked to 
-/dev/urandom to avoid blocking in the MCrypt test (note this does not persist across 
-docker layers).
 
 Specific commits for contemporary versions of dependencies are used in the submodules, 
 and HPHPc further includes a bunch of third party libraries inline directly. Upgrading 
