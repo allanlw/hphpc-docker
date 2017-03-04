@@ -83,13 +83,35 @@ suite. Second, It applies a fix for bug
 [facebook/hhvm#570](https://github.com/facebook/hhvm/issues/570) which is an issue 
 related to static initializer ordering that would sometimes cause floating point 
 exceptions in built targets. Third, it replaces a facebook-internal path to the php 
-reference binary for testing with the system php.
+reference binary for testing with the system php. Finally, it fixes a hardcoded test
+hostname for testing the memcached test to point to localhost.
 
 In addition to the patch, the Dockerfile also configures the system to use bash as the 
 system shell (not doing this breaks some scripts), and adds a symlink from 
 /hphpc/hhvm/src to /hphpc/hhvm/hphp to work around some dangling references to the old 
 name of this directory left over from this commit: 
 [facebook/hhvm@363d1bb](https://github.com/facebook/hhvm/commit/363d1bb20fe84b4cdc2dc0f4c7b1dd39d167a1f5)
+To fix tests, it also adds the root user to the mail group (a test expects root to be
+in more than one group), generates the German, Finish, French and English locales (tests
+expects these to be present), and changes the timezone to "America/Los_Angeles" (again, a test
+expects this).
+
+To further placate the test suite, the script in /test/test.sh performs additional initilization
+before calling the test suite during the build. It resolves the IP address of www.iana.org
+ and changes the hosts file to point example.com and www.example.com to point to it.
+This is because a test expects example.com to serve
+a Connection header, and it no longer does (www.ianai.com seems to for now).
+Next, it removes the ipv6 address for localhost,
+as a test expects that localhost will only have a single address returned from gethostbyname.
+It also changes the first alias of 127.0.0.1 to be localhost.localdomain to satisfy a different
+test. Finally, it symlinks /dev/random to /dev/urandom to make the MCrypt test not take
+forever.
+
+The testing runs the 'QuickTests', 'TestCodeRun::TestSanity' and all of the extension
+tests except for TestExtMysql and TestExtPdo, which have not yet been fixed. QuickTests
+tests some internal runtime functionality, the extension tests are unit tests for the 
+individual builtin extensions, and TestCodeRun::TestSanity is an integration test to
+ensure that a simple test program can be built successfully.
 
 Finally, a few changes are made as small optimizations. Two scripts that are not happy 
 being called outside of a git repository and break parallel builds are called manually 
@@ -99,11 +121,10 @@ docker layers).
 
 Specific commits for contemporary versions of dependencies are used in the submodules, 
 and HPHPc further includes a bunch of third party libraries inline directly. Upgrading 
-all of them to modern versions would be quite the endeavor. Right now the container use 
-Ubuntu 12.04 - I've tried some to port it to 14.04, but ran into some arcane issues 
-that I wasn't able to debug well. I would be happy to accepting pull requests for 
-upgrading OS or library versions, switching away from bundled libraries, improving test 
-coverage or build/run time.
+all of them to modern versions is a bit of an endeavor. You can find some progress,
+at least up to Ubuntu 14.04 if you look in the tags for this repository, but you're
+probably much better off using the 12.04 version which should be significantly less
+janky.
 
 ## License
 
